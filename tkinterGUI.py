@@ -18,11 +18,25 @@ class tkinterGUI:
         return new_window
 
     def create_listbox(self, window, items):
-        listbox = tk.Listbox(window, font=(self.style_font, self.style_fontsize), width=window.winfo_screenwidth(), height=len(items))
-        listbox.pack(padx=10, pady=10)
+        # 依項目長度調整寬度
+        width = max(len(item) for item in items) + 2 if items else 20
+        listbox = tk.Listbox(
+            window,
+            font=(self.style_font, self.style_fontsize),
+            width=width,
+            height=len(items)
+        )
+        listbox.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         for index, item in enumerate(items, start=1):
             listbox.insert(index, item)
         listbox.bind('<<ListboxSelect>>', self.on_listbox_select)
+
+    def on_listbox_select(self, event):
+        widget = event.widget
+        selection = widget.curselection()
+        if selection:
+            value = widget.get(selection[0])
+            self.on_button_press(value)
 
     def create_button(self, window, items):
         for button_text in items:
