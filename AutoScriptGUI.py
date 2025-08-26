@@ -11,16 +11,17 @@ class AutoScriptGUI(tkinterGUI):
         self.window_setup()
         self.window.title("遙控無人機資安檢測工具包")
 
-        test_chapter = [
-            '6 遙控無人機資安檢測-安全要求',
-            '8.1 遙控無人機資安檢測增項測試-一般安全要求',
-            '8.2 遙控無人機資安檢測增項測試-特殊安全要求'
-        ]
+        self.test_chapters = {
+            '6 遙控無人機資安檢測-安全要求': '6',
+            '8.1 遙控無人機資安檢測增項測試-一般安全要求': '8.1',
+            '8.2 遙控無人機資安檢測增項測試-特殊安全要求': '8.2'
+        }
+        test_chapter_names = list(self.test_chapters.keys())
 
         # 計算最長文字的像素寬度
         temp_label = tk.Label(
             self.window,
-            text=max(test_chapter, key=len),
+            text=max(test_chapter_names, key=len),
             font=(self.style_font, self.style_fontsize)
         )
         temp_label.pack()
@@ -42,15 +43,21 @@ class AutoScriptGUI(tkinterGUI):
         self.window.resizable(False, False)
 
         # 建立按鈕
-        self.create_button(self.window, test_chapter)
+        self.create_button(self.window, test_chapter_names)
         self.window.mainloop()
 
     def on_button_press(self, button_text):
         # Hide current window
         self.window.withdraw()
 
+        chapter_id = self.test_chapters.get(button_text)
+        if not chapter_id:
+            print(f"Error: No chapter ID found for {button_text}")
+            self.window.deiconify()
+            return
+
         # Create new window and get reference
-        test_case_window = TestCaseGUI(button_text)
+        test_case_window = TestCaseGUI(self.window, chapter_id)
 
         # Add callback for when child window closes
         test_case_window.window.protocol(
