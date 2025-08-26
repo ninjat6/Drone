@@ -5,8 +5,10 @@ import threading
 import hashlib
 import tkinter as tk
 from tkinter import ttk
-from tkinter import filedialog 
+from tkinter import filedialog
 import os
+import platform
+import shutil
 
 class CallProcess(tkinterGUI):
     def __init__(self):
@@ -36,8 +38,11 @@ class CallProcess(tkinterGUI):
         button_linux.pack(side=tk.LEFT, padx=5)
 
     def userfinder_win(self):
-        cmd = 'net user'
-        users = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        exe = shutil.which('net')
+        if not exe:
+            tk.messagebox.showerror("錯誤", "找不到 net 指令", parent=self.window)
+            return None
+        users = subprocess.run([exe, 'user'], capture_output=True, text=True)
         file_address = self.outputfile(users.stdout)
         return file_address
     
@@ -45,15 +50,18 @@ class CallProcess(tkinterGUI):
         try:
             file_path = self.dump_passwd()
             if file_path:
-                self.openfilewith_mousepad(file_path)
+                self.open_file(file_path)
         except Exception as e:
             tk.messagebox.showerror("錯誤", str(e), parent=self.window)
 
     def dump_passwd(self):
-        cmd = 'cat /etc/passwd'
-        passwd = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-        file_address = self.outputfile(passwd.stdout)
-        return file_address
+        try:
+            with open('/etc/passwd', 'r', encoding='utf-8', errors='ignore') as f:
+                content = f.read()
+            return self.outputfile(content)
+        except Exception as e:
+            tk.messagebox.showerror("錯誤", str(e), parent=self.window)
+            return None
 
     def launch_aircrack(self):
         print("施工中")
@@ -83,10 +91,12 @@ class CallProcess(tkinterGUI):
         if not directory:
             tk.messagebox.showwarning("警告", "請先選擇目錄", parent=self.window)
             return
-        try:
-            subprocess.Popen(['cve-bin-tool', directory])
-        except FileNotFoundError:
+        exe = shutil.which('cve-bin-tool')
+        if not exe:
             tk.messagebox.showerror("錯誤", "找不到 cve-bin-tool 指令", parent=self.window)
+            return
+        try:
+            subprocess.Popen([exe, directory])
         except Exception as e:
             tk.messagebox.showerror("錯誤", str(e), parent=self.window)
 
@@ -112,12 +122,15 @@ class CallProcess(tkinterGUI):
 
     def readfilewith_hexdump(self, entry):
         file_address = entry.get()
-
-        plaintext = subprocess.run(['hexdump', '-C', file_address], 
-                               capture_output=True, 
-                               text=True)
-        file_address = self.outputfile(plaintext)
-        self.openfilewith_mousepad(file_address)
+        exe = shutil.which('hexdump')
+        if not exe:
+            tk.messagebox.showerror("錯誤", "找不到 hexdump 指令", parent=self.window)
+            return
+        plaintext = subprocess.run([exe, '-C', file_address],
+                                   capture_output=True,
+                                   text=True)
+        file_address = self.outputfile(plaintext.stdout)
+        self.open_file(file_address)
 
     def outputfile(self, plaintext):
         file_path = filedialog.asksaveasfilename(
@@ -136,22 +149,30 @@ class CallProcess(tkinterGUI):
         return file_path
 
     def openfilewith_code(self, file_address):
-        # 使用 VS Code 開啟檔案
-        process = subprocess.Popen(['code', file_address], 
-                                stdout=subprocess.PIPE, 
-                                stderr=subprocess.PIPE)
+        exe = shutil.which('code')
+        if not exe:
+            raise RuntimeError("找不到 VS Code 指令")
+        process = subprocess.Popen([exe, file_address],
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
         stderr = process.communicate()
         if process.returncode != 0:
             raise RuntimeError(f"無法開啟 VS Code: {stderr.decode()}")
-        
-    def openfilewith_mousepad(self, file_address):
-        # 使用 VS Code 開啟檔案
-        process = subprocess.Popen(['mousepad', file_address], 
-                                stdout=subprocess.PIPE, 
-                                stderr=subprocess.PIPE)
-        stderr = process.communicate()
-        if process.returncode != 0:
-            raise RuntimeError(f"無法開啟: {stderr.decode()}")
+
+    def open_file(self, file_address):
+        system = platform.system()
+        try:
+            if system == 'Windows':
+                os.startfile(file_address)
+            elif system == 'Darwin':
+                subprocess.Popen(['open', file_address])
+            else:
+                opener = shutil.which('xdg-open') or shutil.which('mousepad')
+                if not opener:
+                    raise RuntimeError('找不到可用的程式開啟檔案')
+                subprocess.Popen([opener, file_address])
+        except Exception as e:
+            raise RuntimeError(f"無法開啟: {e}")
 
     def binaryscan(self):
         try:
@@ -184,17 +205,20 @@ class CallProcess(tkinterGUI):
     def scanfirmware(self, input, window):
         # try:
             payload = input.get()
-      
+
             output_file = filedialog.asksaveasfilename(
                 defaultextension=".html",
-                filetypes=[("Html files", "*.html"), ("All files", "*.*")], 
+                filetypes=[("Html files", "*.html"), ("All files", "*.*")],
                 parent=window
             )
             print("scan")
-            cmd = f'cve-bin-tool "{payload}" -f html -o "{output_file}"'
+            exe = shutil.which('cve-bin-tool')
+            if not exe:
+                tk.messagebox.showerror("錯誤", "找不到 cve-bin-tool 指令", parent=window)
+                return
+            cmd = [exe, payload, '-f', 'html', '-o', output_file]
             process = subprocess.Popen(
                 cmd,
-                shell=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
@@ -361,19 +385,21 @@ class CallProcess(tkinterGUI):
                 
                 def run_scan():
                     try:
+                        exe = shutil.which('cve-bin-tool')
+                        if not exe:
+                            raise RuntimeError('找不到 cve-bin-tool 指令')
                         # 建立暫存目錄存放各檔案的掃描結果
                         temp_dir = os.path.join(os.path.dirname(output_file), "temp_results")
                         os.makedirs(temp_dir, exist_ok=True)
-                        
+
                         results = []
                         for i, file in enumerate(files_to_scan, 1):
                             update_progress(i, os.path.basename(file), "掃描中...")
                             temp_output = os.path.join(temp_dir, f"result_{i}.html")
-                            
-                            cmd = f'cve-bin-tool "{file}" -f html -o "{temp_output}"'
-                            process = subprocess.run(cmd, shell=True, 
-                                                capture_output=True, text=True)
-                            
+
+                            cmd = [exe, file, '-f', 'html', '-o', temp_output]
+                            process = subprocess.run(cmd, capture_output=True, text=True)
+
                             if process.returncode == 0 and os.path.exists(temp_output):
                                 with open(temp_output, 'r') as f:
                                     results.append(f.read())

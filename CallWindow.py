@@ -18,11 +18,12 @@ class CallWindow(tkinterGUI):
         self.checkbox = tk.BooleanVar()
         
         # 建立核取方塊
-        check = tk.Checkbutton(self.window, 
+        check = tk.Checkbutton(self.window,
                             text="連線成功",
                             command=self.connect_success,
                             variable=self.checkbox,**style)
         check.pack(pady=10)
+
 
     def connect_success(self):
         self.window = tk.Toplevel()
