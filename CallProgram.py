@@ -31,7 +31,17 @@ class CallProgram(tkinterGUI):
         if require_sudo and platform.system() != "Windows":
             cmd.insert(0, "sudo")
 
-        threading.Thread(target=subprocess.run, args=(cmd,), kwargs={"check": False}).start()
+        def runner():
+            try:
+                subprocess.run(cmd, check=False)
+            except Exception as e:
+                tk.messagebox.showerror(
+                    "錯誤",
+                    f"執行 {program} 失敗: {e}",
+                    parent=window,
+                )
+
+        threading.Thread(target=runner, daemon=True).start()
 
     def launch_zenmap(self):
         self._run_program("zenmap", require_sudo=True)

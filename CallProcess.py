@@ -139,25 +139,33 @@ class CallProcess(tkinterGUI):
             title="儲存檔案"
         )
         if file_path:
-            # 寫入檔案
-            with open(file_path, 'w') as f:
-                if isinstance(plaintext, str):
-                    f.write(plaintext)
-                else:
-                    f.write(plaintext.stdout)
-            tk.messagebox.showinfo("完成", f"檔案已儲存至: {file_path}")
+            try:
+                with open(file_path, 'w') as f:
+                    if isinstance(plaintext, str):
+                        f.write(plaintext)
+                    else:
+                        f.write(plaintext.stdout)
+                tk.messagebox.showinfo("完成", f"檔案已儲存至: {file_path}")
+            except Exception as e:
+                tk.messagebox.showerror("錯誤", f"無法儲存檔案: {e}", parent=self.window)
+                file_path = ""
         return file_path
 
     def openfilewith_code(self, file_address):
         exe = shutil.which('code')
         if not exe:
             raise RuntimeError("找不到 VS Code 指令")
-        process = subprocess.Popen([exe, file_address],
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE)
-        stderr = process.communicate()
-        if process.returncode != 0:
-            raise RuntimeError(f"無法開啟 VS Code: {stderr.decode()}")
+        try:
+            process = subprocess.Popen(
+                [exe, file_address],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            _, stderr = process.communicate()
+            if process.returncode != 0:
+                raise RuntimeError(f"無法開啟 VS Code: {stderr.decode()}")
+        except Exception as e:
+            raise RuntimeError(f"啟動 VS Code 失敗: {e}")
 
     def open_file(self, file_address):
         system = platform.system()
