@@ -55,9 +55,40 @@ class CallProcess(tkinterGUI):
         file_address = self.outputfile(passwd.stdout)
         return file_address
 
-    def launch_aircrack():
+    def launch_aircrack(self):
         print("施工中")
         pass
+
+    def source_code_scan(self):
+        self.window = tk.Toplevel()
+        self.window_setup()
+        self.window.title("原始碼安全掃描")
+        self.window.geometry("600x200")
+
+        style = {'font': (self.style_font, self.style_fontsize), 'padx': 10, 'pady': 10}
+
+        label = tk.Label(self.window, text="選擇程式碼目錄並執行 cve-bin-tool", **style)
+        label.pack(pady=10)
+
+        entry = tk.Entry(self.window, width=50)
+        entry.pack(padx=10, pady=5)
+
+        button_dir = tk.Button(self.window, text="選擇目錄", command=lambda: self.browse_dir(entry), **style)
+        button_dir.pack()
+
+        button_scan = tk.Button(self.window, text="開始掃描", command=lambda: self.run_cve_scan(entry.get()), **style)
+        button_scan.pack(pady=5)
+
+    def run_cve_scan(self, directory):
+        if not directory:
+            tk.messagebox.showwarning("警告", "請先選擇目錄", parent=self.window)
+            return
+        try:
+            subprocess.Popen(['cve-bin-tool', directory])
+        except FileNotFoundError:
+            tk.messagebox.showerror("錯誤", "找不到 cve-bin-tool 指令", parent=self.window)
+        except Exception as e:
+            tk.messagebox.showerror("錯誤", str(e), parent=self.window)
 
     def checkencrypted(self):
         self.window = tk.Toplevel()
